@@ -8,7 +8,7 @@ from datetime import datetime
 from collections import defaultdict
 
 st.title("📱 WhatsApp Expense Analyzer (OCR.Space Edition)")
-st.write("Upload expense screenshots. Text will be extracted using OCR.Space API (free, no login).")
+st.write("Upload expense screenshots. Text will be extracted using OCR.Space API (free demo key).")
 
 API_URL = "https://api.ocr.space/parse/image"
 API_KEY = "helloworld"  # free demo key
@@ -20,7 +20,7 @@ def ocr_space_image(image_bytes):
             files={"filename": image_bytes},
             data={"apikey": API_KEY, "language": "eng"},
         )
-        if "application/json" in response.headers.get("Content-Type", ""):
+        if response.headers.get("Content-Type", "").startswith("application/json"):
             result = response.json()
             if not result.get("IsErroredOnProcessing") and result.get("ParsedResults"):
                 return result["ParsedResults"][0].get("ParsedText", "")
@@ -28,7 +28,7 @@ def ocr_space_image(image_bytes):
                 st.warning("⚠️ OCR failed. Details below:")
                 st.json(result)
         else:
-            st.error("❌ Unexpected response from OCR.Space (not JSON):")
+            st.error("❌ Unexpected response (not JSON):")
             st.code(response.text[:500])
     except Exception as e:
         st.error(f"❌ Error contacting OCR.Space: {e}")
@@ -100,6 +100,9 @@ if uploaded_files:
         image_bytes = uploaded_file.read()
         text = ocr_space_image(image_bytes)
 
+        if not text.strip():
+            continue
+
         fields = extract_fields(text)
         fields["Category"] = categorize(text)
         fields["Source"] = uploaded_file.name
@@ -107,14 +110,17 @@ if uploaded_files:
         seen.add((fields["Amount"], fields["Recipient"], fields["Date"]))
         records.append(fields)
 
-    df = pd.DataFrame(records)
-    st.dataframe(df)
+    if records:
+        df = pd.DataFrame(records)
+        st.dataframe(df)
 
-    output = io.BytesIO()
-    df.to_excel(output, index=False)
-    st.download_button(
-        label="📥 Download Excel",
-        data=output.getvalue(),
-        file_name="whatsapp_expenses_ocrspace.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        output = io.BytesIO()
+        df.to_excel(output, index=False)
+        st.download_button(
+            label="📥 Download Excel",
+            data=output.getvalue(),
+            file_name="whatsapp_expenses_ocrspace.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.info("No readable text found in uploaded images.")
