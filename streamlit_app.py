@@ -11,7 +11,7 @@ st.title("📱 WhatsApp Expense Analyzer (OCR.Space Edition)")
 st.write("Upload expense screenshots. Text will be extracted using OCR.Space API (free demo key).")
 
 API_URL = "https://api.ocr.space/parse/image"
-API_KEY = "helloworld"  # free demo key
+API_KEY = "K85861126188957"  # free demo key
 
 def ocr_space_image(image_bytes):
     try:
