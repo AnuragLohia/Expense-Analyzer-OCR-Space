@@ -13,21 +13,26 @@ st.write("Upload expense screenshots. Text will be extracted using OCR.Space API
 API_URL = "https://api.ocr.space/parse/image"
 API_KEY = "helloworld"  # free demo key
 
-
 def ocr_space_image(image_bytes):
-    response = requests.post(
-        API_URL,
-        files={"filename": image_bytes},
-        data={"apikey": API_KEY, "language": "eng"},
-    )
-    result = response.json()
-
-    if not result.get("IsErroredOnProcessing") and result.get("ParsedResults"):
-        return result["ParsedResults"][0].get("ParsedText", "")
-    else:
-        st.warning("⚠️ OCR failed. Please try again or check the image clarity.")
-        st.json(result)  # Show error info from OCR.Space
-        return ""
+    try:
+        response = requests.post(
+            API_URL,
+            files={"filename": image_bytes},
+            data={"apikey": API_KEY, "language": "eng"},
+        )
+        if "application/json" in response.headers.get("Content-Type", ""):
+            result = response.json()
+            if not result.get("IsErroredOnProcessing") and result.get("ParsedResults"):
+                return result["ParsedResults"][0].get("ParsedText", "")
+            else:
+                st.warning("⚠️ OCR failed. Details below:")
+                st.json(result)
+        else:
+            st.error("❌ Unexpected response from OCR.Space (not JSON):")
+            st.code(response.text[:500])
+    except Exception as e:
+        st.error(f"❌ Error contacting OCR.Space: {e}")
+    return ""
 
 def extract_fields(text):
     amt_match = re.search(r"₹\s?(\d+[\d,]*)", text)
